@@ -1,103 +1,66 @@
 const Groq = require("groq-sdk");
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Yeh aapka same System Instruction hai
-const systemInstruction = `
-                Here’s a solid system instruction for your AI code reviewer:
+async function generateContent(code, language) {
+    
+    // System Prompt: Sirf role aur language check ke liye
+    const systemInstruction = `
+You are an expert ${language} code reviewer. 
+First, verify if the code is actually ${language}. If it is not, reply ONLY with this exact message and stop:
+## ❌ Language Mismatch Detected
+You selected **${language}**, but the provided code appears to be in a different language.
+    `;
 
-                AI System Instruction: Senior Code Reviewer (7+ Years of Experience)
+    // User Prompt: Code pehle denge, aur Template sabse last mein!
+    const userPrompt = `
+Here is the ${language} code to review:
+\`\`\`${language}
+${code}
+\`\`\`
 
-                Role & Responsibilities:
+If the code is valid ${language}, you MUST output your review EXACTLY using the Markdown template below. 
+DO NOT add any conversational text like "Alternatively..." or "Here is the review". 
+DO NOT skip any headings. You MUST include Security and Test Cases even if the code is simple.
 
-                You are an expert code reviewer with 7+ years of development experience. Your role is to analyze, review, and improve code written by developers. You focus on:
-                    •   Code Quality :- Ensuring clean, maintainable, and well-structured code.
-                    •   Best Practices :- Suggesting industry-standard coding practices.
-                    •   Efficiency & Performance :- Identifying areas to optimize execution time and resource usage.
-                    •   Error Detection :- Spotting potential bugs, security risks, and logical flaws.
-                    •   Scalability :- Advising on how to make code adaptable for future growth.
-                    •   Readability & Maintainability :- Ensuring that the code is easy to understand and modify.
+### 📊 Code Quality Report
 
-                Guidelines for Review:
-                    1.  Provide Constructive Feedback :- Be detailed yet concise, explaining why changes are needed.
-                    2.  Suggest Code Improvements :- Offer refactored versions or alternative approaches when possible.
-                    3.  Detect & Fix Performance Bottlenecks :- Identify redundant operations or costly computations.
-                    4.  Ensure Security Compliance :- Look for common vulnerabilities (e.g., SQL injection, XSS, CSRF).
-                    5.  Promote Consistency :- Ensure uniform formatting, naming conventions, and style guide adherence.
-                    6.  Follow DRY (Don’t Repeat Yourself) & SOLID Principles :- Reduce code duplication and maintain modular design.
-                    7.  Identify Unnecessary Complexity :- Recommend simplifications when needed.
-                    8.  Verify Test Coverage :- Check if proper unit/integration tests exist and suggest improvements.
-                    9.  Ensure Proper Documentation :- Advise on adding meaningful comments and docstrings.
-                    10. Encourage Modern Practices :- Suggest the latest frameworks, libraries, or patterns when beneficial.
+#### 🐛 Bugs & Issues
+(List bugs with 🔴 CRITICAL, 🟠 HIGH, 🟡 MEDIUM, 🔵 LOW. If none, write "✅ No major bugs found.")
 
-                Tone & Approach:
-                    •   Be precise, to the point, and avoid unnecessary fluff.
-                    •   Provide real-world examples when explaining concepts.
-                    •   Assume that the developer is competent but always offer room for improvement.
-                    •   Balance strictness with encouragement :- highlight strengths while pointing out weaknesses.
+#### ⚡ Complexity Analysis
+* **Time Complexity:** 
+* **Space Complexity:** 
+* **Explanation:** 
 
-                Output Example:
+#### 🔐 Security & Vulnerabilities
+(Identify any security risks. If none, write "✅ No obvious security vulnerabilities detected.")
 
-                ❌ Bad Code:
-                \`\`\`javascript
-                                function fetchData() {
-                    let data = fetch('/api/data').then(response => response.json());
-                    return data;
-                }
-                    \`\`\`
+#### 🧪 Suggested Test Cases
+* **Test Case 1 (Normal):** Input: [...], Expected: [...]
+* **Test Case 2 (Edge Case):** Input: [...], Expected: [...]
+* **Test Case 3 (Negative/Invalid):** Input: [...], Expected: [...]
 
-                🔍 Issues:
-                    •   ❌ fetch() is asynchronous, but the function doesn’t handle promises correctly.
-                    •   ❌ Missing error handling for failed API calls.
+#### ✨ Optimized & Refactored Code
+\`\`\`${language}
+(Provide the fully optimized code here)
+\`\`\`
+    `;
 
-                ✅ Recommended Fix:
-
-                        \`\`\`javascript
-                async function fetchData() {
-                    try {
-                        const response = await fetch('/api/data');
-                        if (!response.ok) throw new Error(\`HTTP error! Status: \${response.status}\`);
-                        return await response.json();
-                    } catch (error) {
-                        console.error("Failed to fetch data:", error);
-                        return null;
-                    }
-                }
-                    \`\`\`
-
-                💡 Improvements:
-                    •   ✔ Handles async correctly using async/await.
-                    •   ✔ Error handling added to manage failed requests.
-                    •   ✔ Returns null instead of breaking execution.
-
-                Final Note:
-
-                Your mission is to ensure every piece of code follows high standards. Your reviews should empower developers to write better, more efficient, and scalable code while keeping performance, security, and maintainability in mind.
-`;
-
-async function generateContent(prompt) {
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [
-                {
-                    role: "system",
-                    content: systemInstruction
-                },
-                {
-                    role: "user",
-                    content: prompt
-                }
+                { role: "system", content: systemInstruction },
+                { role: "user", content: userPrompt } // Template ab last mein jaa raha hai
             ],
-            model: "llama-3.3-70b-versatile", // Llama 3 Model (Bohot fast aur free)
+            temperature: 0.1, // Isko 0.1 kar diya hai taaki AI bilkul bhi apni marzi na chalaye
+            model: "llama-3.3-70b-versatile", 
         });
 
-        const responseText = chatCompletion.choices[0]?.message?.content || "";
-        console.log(responseText);
-        return responseText;
+        return chatCompletion.choices[0]?.message?.content || "";
 
     } catch (error) {
-        console.error("API Error:", error);
-        return "Backend toh chalu hai, par AI se connect karne mein problem hui!";
+        console.error("Groq API Error:", error);
+        return "## ❌ Error\nBackend is running, but failed to connect to Groq AI.";
     }
 }
 
