@@ -74,7 +74,7 @@ function App() {
       setLoading(true)
 
       const response = await axios.post(
-        "http://localhost:3000/ai/get-review",
+        "https://ai-code-reviewer-backend-9pqk.onrender.com/ai/get-review",
         { code,language }
       )
 
